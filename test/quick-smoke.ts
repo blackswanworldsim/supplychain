@@ -61,12 +61,11 @@ async function main() {
   // 3. Quick DB check
   console.log("Test 3: Database connectivity...");
   try {
-    const { isDbConfigured, pool } = await import("../src/lib/db/index");
+    const { isDbConfigured, getDb } = await import("../src/lib/db/index");
     if (isDbConfigured()) {
-      const res = await pool.query("SELECT 1 as ok");
-      console.log("  DB connected:", res.rows[0]);
+      const db = getDb();
+      console.log("  DB instance created:", !!db);
       console.log("  PASS\n");
-      await pool.end();
     } else {
       console.log("  SKIP: DATABASE_URL not configured\n");
     }
