@@ -72,5 +72,15 @@ export async function chatCompletionJson<T>(
     { ...options, responseFormat: "json" }
   );
 
-  return JSON.parse(raw) as T;
+  if (!raw) {
+    throw new Error("Azure OpenAI returned an empty response");
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new Error(
+      `Azure OpenAI returned invalid JSON: ${raw.slice(0, 200)}`
+    );
+  }
 }
