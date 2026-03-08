@@ -1,101 +1,195 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import type { Product } from "@/types";
+
+export default function HomePage() {
+  const router = useRouter();
+  const [company, setCompany] = useState("");
+  const [product, setProduct] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/products");
+        if (res.ok) {
+          const data = await res.json();
+          setProducts(data.products ?? []);
+        }
+      } catch {
+        // DB may not be configured yet
+      }
+    }
+    fetchProducts();
+  }, []);
+
+  const handleAnalyze = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!company.trim() || !product.trim()) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company: company.trim(), product: product.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Analysis failed");
+      }
+
+      const data = await res.json();
+      router.push(`/product/${data.productId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-[calc(100vh-56px)] flex flex-col">
+      {/* Hero */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-20">
+        <div className="max-w-2xl w-full text-center space-y-8">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
+              <span className="block text-[#F5F5F5]">Supply Chain</span>
+              <span className="block text-[#7CB9E8]">Intelligence</span>
+            </h1>
+            <p className="mt-4 text-[#8B9098] text-base max-w-md mx-auto leading-relaxed">
+              Enter a company and product. A council of 5 AI personas will
+              decompose its entire supply chain — every component, material, and
+              supplier.
+            </p>
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          <form onSubmit={handleAnalyze} className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Company (e.g. Apple)"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                className="flex-1 bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-4 py-3 text-sm text-[#F5F5F5] placeholder:text-[#6B7280] focus:outline-none focus:border-[#7CB9E8] transition-colors"
+              />
+              <input
+                type="text"
+                placeholder="Product (e.g. iPhone 16 Pro)"
+                value={product}
+                onChange={(e) => setProduct(e.target.value)}
+                className="flex-1 bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-4 py-3 text-sm text-[#F5F5F5] placeholder:text-[#6B7280] focus:outline-none focus:border-[#7CB9E8] transition-colors"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !company.trim() || !product.trim()}
+              className="w-full sm:w-auto px-8 py-3 bg-transparent border border-[#7CB9E8] text-[#7CB9E8] rounded-lg text-sm font-semibold hover:bg-[#7CB9E8]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-[#7CB9E8] border-t-transparent rounded-full animate-spin" />
+                  Analyzing...
+                </span>
+              ) : (
+                "Analyze Supply Chain"
+              )}
+            </button>
+
+            {error && (
+              <p className="text-sm text-[#E63946]">{error}</p>
+            )}
+          </form>
+
+          {/* How it works */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8 border-t border-[#2A2A2A]">
+            <div className="text-center p-4">
+              <div className="text-2xl font-bold text-[#7CB9E8] mb-1">5</div>
+              <div className="text-xs text-[#6B7280] uppercase tracking-wider">
+                AI Personas
+              </div>
+              <p className="text-xs text-[#8B9098] mt-2">
+                Manufacturing, materials, logistics, research, contrarian
+              </p>
+            </div>
+            <div className="text-center p-4">
+              <div className="text-2xl font-bold text-[#7CB9E8] mb-1">3</div>
+              <div className="text-xs text-[#6B7280] uppercase tracking-wider">
+                Step Pipeline
+              </div>
+              <p className="text-xs text-[#8B9098] mt-2">
+                Generate, merge/dedup, vote for consensus
+              </p>
+            </div>
+            <div className="text-center p-4">
+              <div className="text-2xl font-bold text-[#7CB9E8] mb-1">6+</div>
+              <div className="text-xs text-[#6B7280] uppercase tracking-wider">
+                Data Sources
+              </div>
+              <p className="text-xs text-[#8B9098] mt-2">
+                UN Comtrade, OpenCorporates, Wikidata, EDGAR, OSH
+              </p>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {/* Recent analyses */}
+      {products.length > 0 && (
+        <div className="max-w-4xl mx-auto w-full px-6 pb-16">
+          <h2 className="text-xs uppercase tracking-widest text-[#6B7280] mb-4 font-semibold">
+            Recent Analyses
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {products.map((p) => (
+              <a
+                key={p.id}
+                href={`/product/${p.id}`}
+                className="block bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg p-4 hover:border-[#7CB9E8] transition-colors group"
+              >
+                <div className="text-sm font-semibold text-[#F5F5F5] group-hover:text-[#7CB9E8] transition-colors">
+                  {p.product}
+                </div>
+                <div className="text-xs text-[#6B7280] mt-1">{p.company}</div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span
+                    className="text-[9px] px-2 py-0.5 rounded-full font-semibold"
+                    style={{
+                      color:
+                        p.status === "ready"
+                          ? "#2ECC71"
+                          : p.status === "analyzing"
+                          ? "#F4A261"
+                          : p.status === "error"
+                          ? "#E63946"
+                          : "#6B7280",
+                      background:
+                        p.status === "ready"
+                          ? "rgba(46, 204, 113, 0.1)"
+                          : p.status === "analyzing"
+                          ? "rgba(244, 162, 97, 0.1)"
+                          : p.status === "error"
+                          ? "rgba(230, 57, 70, 0.1)"
+                          : "rgba(107, 114, 128, 0.1)",
+                    }}
+                  >
+                    {p.status}
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
